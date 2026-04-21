@@ -74,7 +74,8 @@ namespace Unity.FPS.Gameplay
 
         public bool CanProcessInput()
         {
-            return Cursor.lockState == CursorLockMode.Locked && !m_GameFlowManager.GameIsEnding;
+            // Bypass CursorLockMode check since headless servers/VMs cannot physically lock window cursors
+            return !m_GameFlowManager.GameIsEnding;
         }
 
         public Vector3 GetMoveInput()
