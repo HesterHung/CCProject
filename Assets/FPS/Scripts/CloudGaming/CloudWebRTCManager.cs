@@ -113,7 +113,7 @@ namespace Unity.FPS.CloudGaming
         private async Task ConnectSignalingServer()
         {
             _ws = new ClientWebSocket();
-            Uri serverUri = new Uri("ws://localhost:8080");
+            Uri serverUri = new Uri("ws://127.0.0.1:8080"); // Better IPv4 compatibility on Linux
 
             try
             {

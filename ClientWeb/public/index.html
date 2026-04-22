@@ -62,9 +62,10 @@
     </div>
 
     <script>
+        const YOUR_AWS_PUBLIC_IP = "44.211.24.97"; // <-- REPLACE THIS WITH YOUR ACTUAL PUBLIC IP ADDRESS
         const video = document.getElementById('gameVideo');
         const logArea = document.getElementById('log-area');
-        const ws = new WebSocket(`ws://${location.hostname}:8080`);
+        const ws = new WebSocket(`ws://${YOUR_AWS_PUBLIC_IP}:8080`);
         
         function log(text) {
             console.log(text);
@@ -155,6 +156,9 @@
         // 4. WebSocket Signaling Message Handler
         ws.onopen = () => log("🔗 Connected to Node.js Signaling Server");
         
+        let remoteDescriptionSet = false;
+        let candidateQueue = [];
+
         ws.onmessage = async (event) => {
             const msg = JSON.parse(event.data);
             
@@ -163,6 +167,12 @@
                 
                 // Set remote, then generate Answer
                 await pc.setRemoteDescription(new RTCSessionDescription(msg));
+                remoteDescriptionSet = true;
+
+                while (candidateQueue.length > 0) {
+                    await pc.addIceCandidate(new RTCIceCandidate(candidateQueue.shift()));
+                }
+
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
                 
@@ -170,7 +180,11 @@
                 ws.send(JSON.stringify({ type: 'answer', sdp: answer.sdp }));
             } 
             else if (msg.type === 'candidate') {
-                await pc.addIceCandidate(new RTCIceCandidate(msg));
+                if (remoteDescriptionSet) {
+                    await pc.addIceCandidate(new RTCIceCandidate(msg)).catch(e => console.error(e));
+                } else {
+                    candidateQueue.push(msg);
+                }
             }
         };
 
