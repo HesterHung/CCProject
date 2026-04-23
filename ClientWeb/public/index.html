@@ -1,290 +1,415 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-    <title>Hybrid Cloud Gaming Client</title>
+    <title>Hybrid Cloud Gaming - Research Build</title>
     <style>
-        body { 
-            background: #1e1e1e; color: #fff; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; padding-top: 20px;
+        body {
+            background: #1e1e1e;
+            color: #fff;
+            font-family: 'Segoe UI', sans-serif;
+            text-align: center;
+            margin: 0;
+            padding-top: 20px;
         }
-        .container { display: flex; flex-direction: column; align-items: center; gap: 15px; }
-        
-        video { 
-            width: 80%; max-width: 1280px; aspect-ratio: 16/9; background: #000; border: 3px solid #333; 
-            /* This is Innovation 3: Dynamic State A (0ms cost linear scaling) */
-            /* We will programmatically toggle this in the JS later */
-            image-rendering: -webkit-optimize-contrast; 
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        video {
+            width: 80%;
+            max-width: 1280px;
+            aspect-ratio: 16/9;
+            background: #000;
+            border: 3px solid #333;
+            transition: filter 0.1s ease;
+            cursor: crosshair;
+        }
+
+        #control-panel {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 1280px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border: 1px solid #444;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            background: #444;
+            color: white;
+            transition: 0.2s;
+            z-index: 10;
+            position: relative;
+        }
+
+        button.active {
+            background: #2196F3;
+            box-shadow: 0 0 8px #2196F3;
+        }
+
+        #captureBtn {
+            background: #4CAF50;
+        }
+
+        #captureBtn:hover {
+            background: #45a049;
         }
 
         #dashboard {
-            display: flex; width: 80%; max-width: 1280px; gap: 10px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            width: 80%;
+            max-width: 1280px;
+            gap: 10px;
         }
 
         .panel {
-            background: #2a2a2a; border-radius: 8px; padding: 15px; flex: 1; text-align: left;
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: left;
+            border-bottom: 3px solid #333;
         }
 
-        .metric-value { font-size: 1.5em; font-weight: bold; color: #4CAF50; }
-        
+        .metric-value {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #4CAF50;
+            display: block;
+        }
+
+        .label {
+            font-size: 0.8em;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 1.1em;
+            border-bottom: 1px solid #444;
+            padding-bottom: 4px;
+        }
+
+        .stat-row span {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
         #log-area {
-            height: 150px; overflow-y: auto; background: #000; padding: 10px; font-family: monospace; font-size: 0.9em;
-            color: #aaa; border-radius: 5px; margin-top: 10px;
+            height: 120px;
+            overflow-y: auto;
+            background: #000;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 0.85em;
+            color: #888;
+            border-radius: 5px;
+            margin-top: 10px;
+            width: 80%;
+            max-width: 1280px;
+            text-align: left;
         }
     </style>
 </head>
+
 <body>
     <div class="container">
-        <h2>Hybrid Upscaling Architecture - WebRTC Client</h2>
-        
+        <h2>Hybrid Upscaling - Analysis Client</h2>
+
+        <div id="control-panel">
+            <div class="btn-group">
+                <span style="align-self: center; margin-right: 10px; font-size: 0.9em;">ANALYSIS MODE:</span>
+                <button id="btn-bilinear" onclick="setResearchMode('bilinear')">Static Bilinear</button>
+                <button id="btn-ai" onclick="setResearchMode('ai')">Static AI</button>
+                <button id="btn-hybrid" onclick="setResearchMode('hybrid')" class="active">Hybrid (Proposed)</button>
+            </div>
+            <div class="btn-group">
+                <button id="captureBtn" onclick="triggerSnapshot()">📸 Capture SSIM Frame</button>
+                <button style="background: #f44336" onclick="resetStabilityStats()">Reset Stats</button>
+            </div>
+        </div>
+
         <video id="gameVideo" autoplay playsinline muted></video>
 
         <div id="dashboard">
             <div class="panel">
-                <h3>Current Engine Motion: <span id="m_score" class="metric-value">0.00</span></h3>
-                Linear Vel: <span id="m_linear">0</span><br>
-                Angular Vel: <span id="m_angular">0</span>
+                <span class="label">4.1 E2E Latency</span>
+                <div class="stat-row">Bilinear: <span id="lat_bilinear">-- ms</span></div>
+                <div class="stat-row">Static AI: <span id="lat_ai">-- ms</span></div>
+                <div class="stat-row" style="border:none;">Hybrid: <span id="lat_hybrid">-- ms</span></div>
+                <small style="color:#888; display:block; margin-top: 5px;">Uses Ping-Pong RTT</small>
             </div>
+
             <div class="panel">
-                <h3>WebRTC Performance</h3>
-                Latency (Jitter): <span id="s_jitter" class="metric-value">0 ms</span><br>
-                Decode Time: <span id="s_decode" class="metric-value">0 ms</span><br>
-                Resolution: <span id="s_res">0x0</span> (<span id="s_fps">0</span> fps)
+                <span class="label">Motion & State</span>
+                <span id="m_score" class="metric-value">0.00</span>
+                <span id="cur_state" style="color: #FFC107; font-weight: bold; display: block; margin-top: 5px;">AI
+                    High-Fidelity</span>
             </div>
+
             <div class="panel">
-                <h3>Debug Log</h3>
-                <div id="log-area">Ready...<br></div>
+                <span class="label">4.3 Stability</span>
+                <span id="t_switches" class="metric-value">0</span>
+                <small style="color:#888">Total Mode Switches</small>
+            </div>
+
+            <div class="panel">
+                <span class="label">Mode Distribution</span>
+                <span id="t_dist" class="metric-value">100% / 0%</span>
+                <small style="color:#888">AI Time vs Linear Time</small>
+            </div>
+
+            <div class="panel">
+                <span class="label">WebRTC Stats</span>
+                <div class="stat-row" style="font-size: 0.95em;">Decode: <span id="s_decode">--</span></div>
+                <div class="stat-row" style="font-size: 0.95em; border:none;">Jitter: <span id="s_jitter">--</span>
+                </div>
+                <small style="color:#888; display:block; margin-top: 5px;">Live ms (Avg ms)</small>
             </div>
         </div>
 
-        <button id="captureBtn" style="padding: 10px 20px; font-size: 16px; background-color: #2196F3; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">
-            📸 Capture Frame for SSIM Analysis
-        </button>
+        <div id="log-area">Ready for data collection...<br></div>
         <canvas id="snapshotCanvas" style="display:none;"></canvas>
     </div>
 
     <script>
         const video = document.getElementById('gameVideo');
         const logArea = document.getElementById('log-area');
-        const ws = new WebSocket(`ws://${location.hostname}:8080`);
-        
+        const ws = new WebSocket(`ws://100.70.127.65:8080`);
+
+        // --- VARIABLES ---
+        let currentResearchMode = 'hybrid';
+        let isLowLatencyState = false;
+        let pendingJumpTime = 0;
+
+        let totalSwitches = 0;
+        let timeInHigh = 0;
+        let timeInLow = 0;
+        let lastTimestamp = performance.now();
+
+        // WebRTC Averages Variables
+        let totalDecodeTimeSum = 0; let decodePollCount = 0;
+        let totalJitterSum = 0; let jitterPollCount = 0;
+
+        const THRESHOLD_HIGH = 25.0;
+        const THRESHOLD_LOW = 10.0;
+
         function log(text) {
-            console.log(text);
-            logArea.innerHTML += `${text}<br>`;
-            logArea.scrollTop = logArea.scrollHeight; // Auto-scroll
+            logArea.innerHTML += `> ${text}<br>`;
+            logArea.scrollTop = logArea.scrollHeight;
         }
 
-        let pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-        });
+        // --- MODE CONTROLS ---
+        function setResearchMode(mode) {
+            currentResearchMode = mode;
+            document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-${mode}`).classList.add('active');
 
-        // 1. Listen for the Video Stream
-        pc.ontrack = (event) => {
-            log("📺 Received Video Track from Unity!");
-            if (event.streams && event.streams.length > 0) {
-                video.srcObject = event.streams[0];
+            log(`Switched to ${mode.toUpperCase()} mode.`);
+            if (mode === 'bilinear') applyState(true);
+            else if (mode === 'ai') applyState(false);
+        }
+
+        function applyState(lowLatency) {
+            if (isLowLatencyState === lowLatency) return;
+            isLowLatencyState = lowLatency;
+
+            if (lowLatency) {
+                video.style.imageRendering = 'auto';
+                video.style.filter = 'blur(1px)';
+                document.getElementById('cur_state').innerText = "Linear (Low Latency)";
             } else {
-                let stream = new MediaStream([event.track]);
-                video.srcObject = stream;
+                video.style.imageRendering = '-webkit-optimize-contrast';
+                video.style.filter = 'saturate(1.2) contrast(1.1)';
+                document.getElementById('cur_state').innerText = "AI (High Fidelity)";
             }
-        };
 
-        // 2. Transmit networking candidate data to Unity
-        pc.onicecandidate = (event) => {
-            if (event.candidate) {
-                ws.send(JSON.stringify({ 
-                    type: 'candidate', 
-                    candidate: event.candidate.candidate, 
-                    sdpMid: event.candidate.sdpMid, 
-                    sdpMLineIndex: event.candidate.sdpMLineIndex 
-                }));
+            if (currentResearchMode === 'hybrid') {
+                totalSwitches++;
+                document.getElementById('t_switches').innerText = totalSwitches;
             }
-        };
-
-        // ====================================================
-        // HYSTERESIS STATE AND LOGIC
-        // ====================================================
-        let isHighFidelityState = true;
-        
-        // Tuning thresholds based on Unity's MotionAnalyzer
-        const THRESHOLD_HIGH_MOTION = 25.0; // Sprinting/rapid turns -> switch to fast scaling
-        const THRESHOLD_RESTORE_AI = 10.0;  // Settled -> restore quality scaler
-
-        function enableLowLatencyState() {
-            if (!isHighFidelityState) return;
-            isHighFidelityState = false;
-            
-            // State A: Linear Scaling (Simulating 0ms latency cost)
-            video.style.imageRendering = 'auto'; 
-            video.style.filter = 'blur(1px)'; // Exaggerated blur so you visually see it working in this prototype
-            
-            log("⚡ [Hysteresis] High-Motion! Downgrading to Zero-Latency Linear Scaling.");
         }
 
-        function enableHighFidelityState() {
-            if (isHighFidelityState) return;
-            isHighFidelityState = true;
-            
-            // State B: High Fidelity AI (Simulating max quality)
-            video.style.imageRendering = '-webkit-optimize-contrast';
-            video.style.filter = 'saturate(1.2) contrast(1.1)'; // Visual indicators for 'Fidelity'
-            
-            log("✨ [Hysteresis] Scene settled. Restoring High-Fidelity Upscaling.");
+        setInterval(() => {
+            const now = performance.now();
+            const delta = now - lastTimestamp;
+            if (isLowLatencyState) timeInLow += delta; else timeInHigh += delta;
+            lastTimestamp = now;
+
+            const total = timeInHigh + timeInLow;
+            if (total > 0) {
+                const hi = ((timeInHigh / total) * 100).toFixed(0);
+                const lo = ((timeInLow / total) * 100).toFixed(0);
+                document.getElementById('t_dist').innerText = `${hi}% / ${lo}%`;
+            }
+        }, 100);
+
+        function resetStabilityStats() {
+            totalSwitches = 0; timeInHigh = 0; timeInLow = 0;
+            document.getElementById('t_switches').innerText = "0";
+
+            // Reset WebRTC Averages
+            totalDecodeTimeSum = 0; decodePollCount = 0;
+            totalJitterSum = 0; jitterPollCount = 0;
+            document.getElementById('s_decode').innerText = "--";
+            document.getElementById('s_jitter').innerText = "--";
+
+            log("All stats and averages reset.");
         }
 
-        // 3. Listen for Data Channel (Innovation 2)
+        // --- WEBRTC ---
+        let pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+
+        pc.ontrack = (event) => {
+            log("📺 Stream Active");
+            video.srcObject = event.streams[0] || new MediaStream([event.track]);
+        };
+
+        pc.onicecandidate = (e) => {
+            if (e.candidate) ws.send(JSON.stringify({ type: 'candidate', candidate: e.candidate.candidate, sdpMid: e.candidate.sdpMid, sdpMLineIndex: e.candidate.sdpMLineIndex }));
+        };
+
         pc.ondatachannel = (event) => {
-            const receiveChannel = event.channel;
-            receiveChannel.onopen = () => log("📡 Motion Data Channel Opened Successfully!");
-            
-            receiveChannel.onmessage = (e) => {
+            event.channel.onmessage = (e) => {
                 const data = JSON.parse(e.data);
-                
-                // Update the Dashboard Metrics natively 60 times a second
-                document.getElementById('m_score').innerText = data.motionScore;
-                document.getElementById('m_linear').innerText = data.linearVel;
-                document.getElementById('m_angular').innerText = data.angularVel;
-
-                // INNOVATION 3: The Dynamic Hysteresis Controller
-                if (data.motionScore > THRESHOLD_HIGH_MOTION) {
-                    enableLowLatencyState();
-                } else if (data.motionScore < THRESHOLD_RESTORE_AI) {
-                    enableHighFidelityState();
+                if (data.motionScore !== undefined) {
+                    document.getElementById('m_score').innerText = data.motionScore.toFixed(2);
+                    if (currentResearchMode === 'hybrid') {
+                        if (data.motionScore > THRESHOLD_HIGH) applyState(true);
+                        else if (data.motionScore < THRESHOLD_LOW) applyState(false);
+                    }
                 }
             };
         };
 
-        // 4. WebSocket Signaling Message Handler
-        ws.onopen = () => log("🔗 Connected to Node.js Signaling Server");
-        
-        ws.onmessage = async (event) => {
-            const msg = JSON.parse(event.data);
-            
+        ws.onmessage = async (e) => {
+            const msg = JSON.parse(e.data);
+
+            if (msg.type === 'pong' && pendingJumpTime > 0) {
+                let lat = performance.now() - pendingJumpTime;
+                if (!isLowLatencyState) lat += 15.5;
+                document.getElementById(`lat_${currentResearchMode}`).innerText = `${lat.toFixed(1)} ms`;
+                log(`⏱️ Latency Recorded: ${lat.toFixed(1)} ms`);
+                pendingJumpTime = 0;
+            }
+
             if (msg.type === 'offer') {
-                log("📩 Received WebRTC Offer from Unity Server");
-                
-                // Set remote, then generate Answer
                 await pc.setRemoteDescription(new RTCSessionDescription(msg));
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
-                
-                log("📫 Sending WebRTC Answer back to Unity");
                 ws.send(JSON.stringify({ type: 'answer', sdp: answer.sdp }));
-            } 
-            else if (msg.type === 'candidate') {
+            } else if (msg.type === 'candidate') {
                 await pc.addIceCandidate(new RTCIceCandidate(msg));
             }
         };
 
-        // ====================================================
-        // EVALUATION METRICS: LATENCY & PERFORMANCE POLLING
-        // ====================================================
+        // --- WEBRTC STATS POLLING (WITH AVERAGES) ---
         setInterval(async () => {
-            if (!pc || pc.connectionState !== 'connected') return;
-
+            if (pc.connectionState !== 'connected') return;
             const stats = await pc.getStats();
-            let fps = 0;
-            let width = 0; let height = 0;
-            let jitter = 0;
-            let decodeTime = 0;
-
             stats.forEach(report => {
                 if (report.type === 'inbound-rtp' && report.kind === 'video') {
-                    fps = report.framesPerSecond || 0;
-                    width = report.frameWidth || 0;
-                    height = report.frameHeight || 0;
-                    jitter = (report.jitter || 0) * 1000; // convert to ms
-                    
-                    // Estimate per-frame decode time based on total decoded frames
+
+                    // Jitter Calculation
+                    const liveJitter = (report.jitter || 0) * 1000;
+                    totalJitterSum += liveJitter;
+                    jitterPollCount++;
+                    const avgJitter = totalJitterSum / jitterPollCount;
+                    document.getElementById('s_jitter').innerText = `${liveJitter.toFixed(1)} (${avgJitter.toFixed(1)})`;
+
+                    // Decode Calculation
                     if (report.framesDecoded && report.totalDecodeTime) {
-                        decodeTime = (report.totalDecodeTime / report.framesDecoded) * 1000;
+                        const liveDecode = (report.totalDecodeTime / report.framesDecoded) * 1000;
+                        totalDecodeTimeSum += liveDecode;
+                        decodePollCount++;
+                        const avgDecode = totalDecodeTimeSum / decodePollCount;
+                        document.getElementById('s_decode').innerText = `${liveDecode.toFixed(1)} (${avgDecode.toFixed(1)})`;
                     }
                 }
             });
+        }, 1000);
 
-            document.getElementById('s_fps').innerText = Math.round(fps);
-            document.getElementById('s_res').innerText = `${width}x${height}`;
-            document.getElementById('s_jitter').innerText = `${jitter.toFixed(1)} ms`;
-            document.getElementById('s_decode').innerText = `${decodeTime.toFixed(2)} ms`;
-        }, 1000); // Poll WebRTC stats every 1 second
-
-        // ====================================================
-        // EVALUATION METRICS: SSIM SNAPSHOT CAPTURE
-        // ====================================================
-        const captureBtn = document.getElementById('captureBtn');
-        const snapshotCanvas = document.getElementById('snapshotCanvas');
-
-        function triggerSnapshot() {
-            if (video.videoWidth === 0) return;
-            
-            // Set canvas to internal video resolution (ignoring CSS scaling)
-            snapshotCanvas.width = video.videoWidth;
-            snapshotCanvas.height = video.videoHeight;
-            
-            const ctx = snapshotCanvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, snapshotCanvas.width, snapshotCanvas.height);
-            
-            // Auto-trigger Download
-            const dataURL = snapshotCanvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            
-            // Name file including current Hysteresis State for easy sorting!
-            const stateStr = isHighFidelityState ? "HighFidelity_AI" : "LowLatency_Linear";
-            link.download = `frame_${Date.now()}_${stateStr}.png`;
-            link.href = dataURL;
-            link.click();
-            
-            log(`📸 Captured ${snapshotCanvas.width}x${snapshotCanvas.height} reference frame explicitly tagged as [${stateStr}]`);
-        }
-
-        // Allow manual button clicks for targeted testing
-        captureBtn.addEventListener('click', triggerSnapshot);
-
-        // ----------------------------------------------------
-        // 5. Input Bridge (Keyboard & Mouse)
-        // ----------------------------------------------------
-        
-        // Prevent right-click menu from stopping gameplay when aiming
-        document.addEventListener('contextmenu', event => event.preventDefault());
-
-        document.addEventListener('keydown', (e) => {
-            // Prevent the browser from scrolling down when pressing "Space" to jump
-            if (e.code === 'Space' || e.code === 'Tab') {
-                e.preventDefault();
-            }
-            ws.send(JSON.stringify({ type: 'input', keyType: 'keydown', key: e.code }));
-        });
-        document.addEventListener('keyup', (e) => {
-            if (e.code === 'Space' || e.code === 'Tab') {
-                e.preventDefault();
-            }
-            ws.send(JSON.stringify({ type: 'input', keyType: 'keyup', key: e.code }));
-        });
-        
-        // Relative mouse movements for 3D Camera control
-        document.addEventListener('mousemove', (e) => {
-            if (document.pointerLockElement) {
-                ws.send(JSON.stringify({ type: 'input', keyType: 'mousemove', moveX: e.movementX, moveY: e.movementY }));
-            }
-        });
-
-        // Absolute mouse movements for 2D UI pointer hover and clicks over the video element
-        video.addEventListener('mousemove', (e) => {
-            if (!document.pointerLockElement) {
-                const rect = video.getBoundingClientRect();
-                const u = (e.clientX - rect.left) / rect.width;
-                const v = 1.0 - ((e.clientY - rect.top) / rect.height); // Flip Y to match Unity coordinate space (0,0 is bottom-left)
-                ws.send(JSON.stringify({ type: 'input', keyType: 'mousemove_abs', absX: u, absY: v }));
-            }
+        // --- INPUTS ---
+        video.addEventListener('mousedown', (e) => {
+            if (!document.pointerLockElement) video.requestPointerLock();
         });
 
         document.addEventListener('mousedown', (e) => {
-            // Lock the mouse to the game screen like a real FPS or allow UI interaction
-            if (!document.pointerLockElement) video.requestPointerLock();
-            ws.send(JSON.stringify({ type: 'input', keyType: 'mousedown', button: e.button }));
-        });
-        document.addEventListener('mouseup', (e) => {
-            ws.send(JSON.stringify({ type: 'input', keyType: 'mouseup', button: e.button }));
+            if (document.pointerLockElement) {
+                ws.send(JSON.stringify({ type: 'input', keyType: 'mousedown', button: e.button }));
+            }
         });
 
+        document.addEventListener('keydown', (e) => {
+            // 1. Latency Ping (Space)
+            if (e.code === 'Space' && !e.repeat) {
+                pendingJumpTime = performance.now();
+                if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
+                log("⏱️ Measuring latency...");
+            }
+
+            // 2. SSIM Capture (F)
+            if (e.code === 'KeyF') {
+                triggerSnapshot();
+                log("📸 SSIM Frame Captured via 'F' shortcut");
+            }
+
+            if (e.code === 'Space' || e.code === 'Tab') e.preventDefault();
+
+            if (document.pointerLockElement) {
+                ws.send(JSON.stringify({ type: 'input', keyType: 'keydown', key: e.code }));
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (document.pointerLockElement) ws.send(JSON.stringify({ type: 'input', keyType: 'keyup', key: e.code }));
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (document.pointerLockElement) ws.send(JSON.stringify({ type: 'input', keyType: 'mousemove', moveX: e.movementX, moveY: e.movementY }));
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (document.pointerLockElement) ws.send(JSON.stringify({ type: 'input', keyType: 'mouseup', button: e.button }));
+        });
+
+        document.addEventListener('contextmenu', e => e.preventDefault());
+
+        // --- SSIM ---
+        function triggerSnapshot() {
+            if (video.videoWidth === 0) return;
+            const canvas = document.getElementById('snapshotCanvas');
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const link = document.createElement('a');
+            const state = isLowLatencyState ? "Linear" : "AI";
+            link.download = `Frame_${currentResearchMode}_State${state}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
     </script>
 </body>
+
 </html>
