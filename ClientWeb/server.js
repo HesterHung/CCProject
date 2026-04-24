@@ -15,10 +15,23 @@ wss.on('connection', (ws) => {
     console.log('Client connected. Total:', clients.length);
 
     ws.on('message', (message) => {
-        // Broadcast the WebRTC signaling message to all OTHER clients
         const msgStr = message.toString();
-        console.log("Received data:", msgStr); // DEBUG LOG
+        // console.log("Received data:", msgStr); // Optional: keep this if you still want debug logs
 
+        // --- NEW PING INTERCEPT ---
+        try {
+            const data = JSON.parse(msgStr);
+            if (data.type === 'ping') {
+                // Immediately reply to the browser client and stop processing
+                ws.send(JSON.stringify({ type: 'pong' }));
+                return; 
+            }
+        } catch (err) {
+            // Failsafe: if the message isn't JSON, just ignore and let it broadcast
+        }
+        // --------------------------
+
+        // Broadcast the WebRTC signaling message to all OTHER clients (e.g., Unity)
         clients.forEach(client => {
             if (client !== ws && client.readyState === WebSocket.OPEN) {
                 client.send(msgStr);
