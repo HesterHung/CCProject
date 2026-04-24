@@ -33,5 +33,11 @@ Keep the Node server running in the background and initialize the game environme
 2. Open the extracted folder and double-click **`My Project.exe`**.
 3. Wait for the application to initialize and establish a WebRTC connection with the signaling server. The video stream will automatically appear in your web client once connected.
 
-## 4. Research Controls
+## 4. Usage & Data Collection
+Once the stream is live, the web client functions as an analysis dashboard. You can interact with the game using standard mouse and keyboard controls (click the video to lock the pointer).
+
+**Research Controls:**
 * **Mode Switching:** Click the dashboard buttons (Static Bilinear, Static AI, Hybrid) to switch rendering modes dynamically during gameplay.
+* **Measure Latency:** Press the **`Space`** key to trigger a ping-pong RTT measurement. The result will display on the dashboard.
+* **Capture Frame (SSIM):** Press the **`F`** key or click the "Capture SSIM Frame" button to download a PNG snapshot of the current frame for structural similarity analysis. The file name will automatically label the current research mode.
+* **Reset Stats:** Click the red "Reset Stats" button to clear motion scores, mode switch counts, and WebRTC averages (Decode/Jitter) for a new testing run.
