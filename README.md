@@ -15,7 +15,7 @@ This README provides a step-by-step guide to deploying the Node.js signaling ser
 
 ### 1. Launch the EC2 Instance
 * Log into your AWS Management Console.
-* Launch a new EC2 instance using the **provided AMI** (inside the AMI, you should got the needed folders and needed security group rule. In case you don't have the folder inside, you can still found that 2 zip files in our github repo in this branch 'main' which you can unzip them).
+* Launch a new EC2 instance using the **provided AMI (ID: ami-0994bdb529122d33f)** (inside the AMI, you should got the needed folders and needed security group rule. In case, you fail to access to the AMI, you can still found that 2 zip files in our github repo in this branch 'main', which you can unzip them).
 
 ### 2. Start the Node.js Server
 Open MobaXterm and connect to your instance using the public IP. Once connected, execute the following commands:
